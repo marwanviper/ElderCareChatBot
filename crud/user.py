@@ -30,7 +30,11 @@ def get_user_by_email(db: Session, email: str):
     Returns:
         The User object if found, otherwise None.
     """
-    user = db.query(User).filter(User.email == email).first()
+    user = (
+        db.query(User)
+        .filter(User.email == email and User.deleted_date.is_(None))
+        .first()
+    )
     return user
 
 
@@ -42,7 +46,11 @@ def get_user_by_id(db: Session, user_id: int):
     Returns:
         The User object if found, otherwise None.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = (
+        db.query(User)
+        .filter(User.id == user_id and User.deleted_date.is_(None))
+        .first()
+    )
     return user
 
 
