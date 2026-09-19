@@ -1,0 +1,19 @@
+id,resident_id,report_date,content,created_by
+1,1,2026-09-01 08:15:00,Resident ate approximately 80% of breakfast and appeared alert and comfortable.,1
+2,1,2026-09-04 09:10:00,Resident reported mild knee discomfort during morning care. Mobility remained stable.,1
+3,1,2026-09-08 18:20:00,Resident was tired after dinner but had no acute complaints. Hydration was encouraged.,1
+4,2,2026-09-02 07:45:00,Resident slept well and completed morning hygiene with minimal assistance.,1
+5,2,2026-09-06 14:30:00,"Resident appeared confused for approximately 20 minutes, then returned to baseline.",2
+6,2,2026-09-09 10:00:00,Resident participated in a short supervised walk in the corridor.,2
+7,3,2026-09-03 08:00:00,Resident declined breakfast initially but ate half of the meal later.,2
+8,3,2026-09-07 16:40:00,Resident reported dizziness when standing. Staff assisted resident back to a chair.,2
+9,3,2026-09-09 19:05:00,Resident was comfortable during evening check and denied pain.,3
+10,4,2026-09-01 11:20:00,Resident completed physiotherapy exercises with good participation.,3
+11,4,2026-09-05 13:10:00,Resident required additional assistance transferring from bed to chair.,3
+12,4,2026-09-08 17:15:00,Resident had a good appetite at dinner and interacted positively with staff.,4
+13,5,2026-09-02 09:30:00,Resident was calm and participated in a memory activity.,4
+14,5,2026-09-06 20:00:00,Resident complained of difficulty sleeping and requested a quieter environment.,4
+15,5,2026-09-09 08:50:00,Resident slept better and reported feeling rested in the morning.,4
+16,6,2026-09-03 10:15:00,Resident completed assisted walking exercises without incident.,3
+17,6,2026-09-07 12:00:00,Resident had reduced appetite at lunch but accepted fluids.,3
+18,6,2026-09-09 15:45:00,Resident was observed resting comfortably and showed no signs of distress.,3

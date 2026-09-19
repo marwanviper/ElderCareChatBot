@@ -1,0 +1,6 @@
+id,name,email,password_hash,role,
+1,Ahmed Hassan,ahmed@eldercare.test,HASHED_PASSWORD_1,caregiver,
+2,Sara Ali,sara@eldercare.test,HASHED_PASSWORD_2,caregiver,
+3,Omar Khaled,omar@eldercare.test,HASHED_PASSWORD_3,caregiver,
+4,Mona Ibrahim,mona@eldercare.test,HASHED_PASSWORD_4,caregiver,
+5,Admin User,admin@eldercare.test,HASHED_PASSWORD_5,admin,

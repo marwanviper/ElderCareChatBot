@@ -1,0 +1,5 @@
+id,resident_id,incident_date,type,description
+1,1,2026-08-29 15:20:00,fall,Resident slipped while standing from a chair. No injury was observed. Staff assisted resident safely back to the chair.
+2,3,2026-09-07 16:35:00,near_fall,Resident became dizzy while standing. Staff provided immediate support. No fall occurred.
+3,4,2026-08-25 12:10:00,fall,Resident lost balance during transfer from bed to chair. No visible injury was noted.
+4,6,2026-08-30 09:40:00,medication_delay,Scheduled medication was administered approximately 30 minutes later than planned due to a pharmacy delivery delay.
