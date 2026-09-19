@@ -1,8 +1,7 @@
 import sqlalchemy
 from src.config import Settings
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Load settings from the .env file
 settings = Settings()
@@ -13,7 +12,7 @@ engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-class Base(declarative_base):
+class Base(DeclarativeBase):
     """Base class for all SQLAlchemy models."""
 
     pass
