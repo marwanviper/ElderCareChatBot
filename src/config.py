@@ -1,19 +1,5 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+"""Legacy config re-export module to preserve backward compatibility."""
 
+from src.core.config import Settings, settings
 
-class Settings(BaseSettings):
-    """Application settings."""
-
-    app_name: str = "My FastAPI Application"
-    debug: bool = True
-    DATABASE_URL: str = "sqlite:///./test.db"
-    secret_key: str = "your-secret-key"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-
-
-if __name__ == "__main__":
-    settings = Settings()
-    print(settings.DATABASE_URL)
+__all__ = ["Settings", "settings"]

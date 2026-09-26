@@ -133,28 +133,27 @@ The AI layer will eventually support conversational context, semantic retrieval,
 ## 🗺️ Roadmap
 
 ### Backend
-
 - [x] PostgreSQL setup
 - [x] SQLAlchemy configuration
 - [x] Database models
 - [x] CRUD layer
-- [ ] Pydantic schemas
-- [ ] FastAPI application
-- [ ] API routers
-- [ ] Authentication
-- [ ] Authorization
+- [x] Pydantic schemas
+- [x] FastAPI application
+- [x] API routers
+- [x] Authentication
+- [x] Authorization
+- [x] Centralized Logging & Middleware
+- [x] Automated Unit & Integration Tests
 
 ### Care Management
+- [x] Elderly profiles (`residents`)
+- [x] Caregiver management & assignment permissions (`user_resident_permissions`)
+- [x] Care reports (`care_reports`)
+- [x] Care goals (`care_goals`)
+- [x] Incident logs (`incidents`)
+- [ ] Notifications & alerts
 
-- [ ] Elderly profiles
-- [ ] Caregiver management
-- [ ] Care reports
-- [ ] Care history
-- [ ] Notifications
-- [ ] Care-related records
-
-### AI
-
+### AI & Chatbot
 - [ ] Chatbot integration
 - [ ] Conversation history
 - [ ] Context management
@@ -163,6 +162,18 @@ The AI layer will eventually support conversational context, semantic retrieval,
 - [ ] Vector database
 - [ ] RAG pipeline
 - [ ] Personalized responses
+
+---
+
+## 📚 Documentation
+
+Detailed documentation is available in the [`docs/`](docs/README.md) directory:
+- [API Reference](docs/API.md)
+- [Authentication Guide](docs/AUTHENTICATION.md)
+- [Authorization & RBAC](docs/AUTHORIZATION.md)
+- [Logging & Error Handling](docs/LOGGING.md)
+- [Database Architecture](docs/DATABASE.md)
+- [Developer Guide](docs/DEVELOPMENT.md)
 
 ---
 

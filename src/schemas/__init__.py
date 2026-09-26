@@ -1,3 +1,4 @@
+from src.schemas.auth import LoginRequest, Token, TokenPayload
 from src.schemas.care_goal import (
     CareGoalBase,
     CareGoalCreate,
@@ -35,6 +36,10 @@ from src.schemas.user_resident_permission import (
 )
 
 __all__ = [
+    # Auth
+    "Token",
+    "TokenPayload",
+    "LoginRequest",
     # User
     "UserBase",
     "UserCreate",
