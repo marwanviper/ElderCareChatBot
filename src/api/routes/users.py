@@ -13,7 +13,7 @@ from src.crud.user import (
     get_users,
     update_user,
 )
-from src.models.user import User
+from src.models.user import User, Role
 from src.schemas.user import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -29,7 +29,7 @@ def list_users(
     limit: int = Query(default=100, ge=1, le=100),
     include_deleted: bool = False,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> list[User]:
     """Retrieve a paginated list of users. Requires administrator role."""
     return get_users(

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from src.models.user import Role
 from src.schemas.user import EmailStr
 
 
@@ -15,7 +16,7 @@ class TokenPayload(BaseModel):
 
     sub: str | None = None
     user_id: int | None = None
-    role: str | None = None
+    role: Role | None = None
 
 
 class LoginRequest(BaseModel):

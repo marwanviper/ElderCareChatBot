@@ -22,6 +22,16 @@ class TestApiAuth(ApiTestCase):
         self.assertIn("id", data)
         self.assertNotIn("password", data)
         self.assertNotIn("password_hash", data)
+    
+    def test_register_with_invalid_role_unprocessable_entity(self):
+        payload = {
+            "name": "Invalid Role",
+            "email": "invalid@eldercare.test",
+            "password": "validpassword123",
+            "role": "invalid_role",
+        }
+        response = self.client.post("/api/v1/auth/register", json=payload)
+        self.assertEqual(response.status_code, 422) 
 
     def test_register_duplicate_email(self):
         """Test that registering an existing email returns 409 Conflict."""

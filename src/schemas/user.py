@@ -19,6 +19,9 @@ except ImportError:
     ]
 
 
+from src.models.user import Role
+
+
 class UserBase(BaseModel):
     """Shared properties for a User."""
 
@@ -35,12 +38,10 @@ class UserBase(BaseModel):
         description="Unique email address of the user",
         examples=["ahmed@eldercare.test"],
     )
-    role: str = Field(
-        default="caregiver",
-        min_length=1,
-        max_length=20,
-        description="User role (e.g., 'admin', 'caregiver')",
-        examples=["caregiver"],
+    role: Role = Field(
+        default=Role.CAREGIVER,
+        description="User role ('admin' or 'caregiver')",
+        examples=[Role.CAREGIVER.value],
     )
 
 
@@ -70,10 +71,8 @@ class UserUpdate(BaseModel):
         max_length=255,
         description="Updated email address",
     )
-    role: str | None = Field(
+    role: Role | None = Field(
         default=None,
-        min_length=1,
-        max_length=20,
         description="Updated role",
     )
     password: str | None = Field(
@@ -90,10 +89,20 @@ class UserResponse(BaseModel):
     id: int = Field(..., description="Unique user ID")
     name: str = Field(..., description="Full name of the user")
     email: EmailStr = Field(..., description="Unique email address")
-    role: str = Field(..., description="Role of the user")
+    role: Role = Field(..., description="Role of the user")
     deleted_date: datetime | None = Field(
         default=None,
         description="Timestamp of soft deletion, or None if active",
     )
 
     model_config = ConfigDict(from_attributes=True)
+
+
+__all__ = [
+    "Role",
+    "EmailStr",
+    "UserBase",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+]

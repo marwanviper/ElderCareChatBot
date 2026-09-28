@@ -13,7 +13,7 @@ from src.crud.user_resident_permission import (
     get_permissions_by_user,
     get_user_resident_permission,
 )
-from src.models.user import User
+from src.models.user import User, Role
 from src.models.user_resident_permission import UserResidentPermission
 from src.schemas.user_resident_permission import (
     UserResidentPermissionCreate,
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/permissions", tags=["Permissions"])
 def assign_permission(
     permission_data: UserResidentPermissionCreate,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> UserResidentPermission:
     """Grant a user permission to access a resident's records. Requires admin role."""
     # Ensure user exists
@@ -79,7 +79,7 @@ def list_permissions(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=100),
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> list[UserResidentPermission]:
     """List all user-resident permission links. Requires administrator role."""
     return get_all_user_resident_permissions(db, skip=skip, limit=limit)
@@ -96,7 +96,7 @@ def list_user_permissions(
     current_user: User = Depends(get_current_user),
 ) -> list[UserResidentPermission]:
     """Retrieve all resident permissions assigned to a specific user."""
-    if current_user.role != "admin" and current_user.id != user_id:
+    if current_user.role != Role.ADMIN and current_user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to view another user's permissions",
@@ -112,7 +112,7 @@ def list_user_permissions(
 def list_resident_permissions(
     resident_id: int,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> list[UserResidentPermission]:
     """Retrieve all users authorized to access a specific resident."""
     return get_permissions_by_resident(db, resident_id)
@@ -127,7 +127,7 @@ def revoke_permission(
     user_id: int,
     resident_id: int,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> None:
     """Revoke access permission for a resident from a user. Requires admin role."""
     deleted = delete_user_resident_permission(

@@ -16,7 +16,7 @@ from src.crud.incident import (
     update_incident,
 )
 from src.models.incident import Incident
-from src.models.user import User
+from src.models.user import User,Role
 from src.schemas.incident import (
     IncidentCreate,
     IncidentResponse,
@@ -134,7 +134,7 @@ def modify_incident(
 def remove_incident(
     incident_id: int,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> None:
     """Delete an incident record. Requires administrator role."""
     deleted = delete_incident(db, incident_id)

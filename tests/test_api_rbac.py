@@ -34,6 +34,23 @@ class TestApiRBAC(ApiTestCase):
         self.cg1_headers = self.get_auth_headers(self.caregiver1)
         self.cg2_headers = self.get_auth_headers(self.caregiver2)
 
+    def test_creation_of_user_with_invalid_role_returns_unprocessable_entity(self):
+        payload = {
+            "name": "Invalid Role",
+            "email": "invalid@eldercare.test",
+            "password": "validpassword123",
+            "role": "invalid_role",
+        }
+        response = self.client.post("/api/v1/users", json=payload, headers=self.admin_headers)
+        self.assertEqual(response.status_code, 422)
+
+
+    def test_updation_of_user_with_invalid_role_returns_unprocessable_entity(self):
+        payload = {"role": "invalid_role"}
+        response = self.client.patch(f"/api/v1/users/{self.caregiver1.id}", json=payload, headers=self.admin_headers)
+        self.assertEqual(response.status_code, 422) 
+        
+
     def test_list_users_admin_allowed(self):
         """Admin can list all users."""
         response = self.client.get("/api/v1/users", headers=self.admin_headers)

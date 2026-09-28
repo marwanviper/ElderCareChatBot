@@ -17,7 +17,7 @@ from src.crud.resident import (
 )
 from src.crud.user_resident_permission import get_permissions_by_user
 from src.models.resident import Resident
-from src.models.user import User
+from src.models.user import User, Role
 from src.schemas.resident import (
     ResidentCreate,
     ResidentResponse,
@@ -42,7 +42,7 @@ def list_residents(
 
     Admins receive all residents; caregivers receive only assigned residents.
     """
-    if current_user.role == "admin":
+    if current_user.role == Role.ADMIN:
         return get_all_residents(db, skip=skip, limit=limit)
 
     # For caregivers, retrieve only assigned residents
@@ -84,7 +84,7 @@ def get_resident(
 def create_new_resident(
     resident_data: ResidentCreate,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> Resident:
     """Create a new resident record. Requires administrator role."""
     resident = create_resident(db, resident_data=resident_data)
@@ -124,7 +124,7 @@ def modify_resident(
 def remove_resident(
     resident_id: int,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> None:
     """Permanently delete a resident record. Requires administrator role."""
     deleted = delete_resident(db, resident_id=resident_id)

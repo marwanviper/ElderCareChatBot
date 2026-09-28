@@ -17,7 +17,7 @@ from src.crud.care_report import (
 )
 from src.crud.user_resident_permission import get_permissions_by_user
 from src.models.care_report import CareReport
-from src.models.user import User
+from src.models.user import User,Role
 from src.schemas.care_report import (
     CareReportCreate,
     CareReportResponse,
@@ -47,7 +47,7 @@ def create_report(
     )
 
     # Stamp author if not set
-    if report_data.created_by is None or current_user.role != "admin":
+    if report_data.created_by is None or current_user.role != Role.ADMIN:
         report_data.created_by = current_user.id
 
     report = create_care_report(db, report_data=report_data)
@@ -72,7 +72,7 @@ def list_care_reports(
     current_user: User = Depends(get_current_user),
 ) -> list[CareReport]:
     """Retrieve care reports accessible to the current user."""
-    if current_user.role == "admin":
+    if current_user.role == Role.ADMIN:
         return get_all_care_reports(db, skip=skip, limit=limit)
 
     permissions = get_permissions_by_user(db, current_user.id)
@@ -156,7 +156,7 @@ def modify_report(
         resident_id=report.resident_id, current_user=current_user, db=db
     )
 
-    if current_user.role != "admin" and report.created_by != current_user.id:
+    if current_user.role != Role.ADMIN and report.created_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to edit reports authored by someone else",
@@ -191,7 +191,7 @@ def remove_report(
         resident_id=report.resident_id, current_user=current_user, db=db
     )
 
-    if current_user.role != "admin" and report.created_by != current_user.id:
+    if current_user.role != Role.ADMIN and report.created_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to delete reports authored by someone else",

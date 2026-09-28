@@ -1,7 +1,8 @@
 from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import DateTime, Enum as SQLEnum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database import Base
@@ -9,6 +10,16 @@ from src.database import Base
 if TYPE_CHECKING:
     from src.models.care_report import CareReport
     from src.models.user_resident_permission import UserResidentPermission
+
+
+class Role(str, Enum):
+    """User roles defining system access tiers."""
+
+    ADMIN = "admin"
+    CAREGIVER = "caregiver"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class User(Base):
@@ -22,7 +33,17 @@ class User(Base):
         String(255), unique=True, index=True, nullable=False
     )
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    role: Mapped[str] = mapped_column(String(20), default="caregiver", nullable=False)
+    role: Mapped[Role] = mapped_column(
+        SQLEnum(
+            Role,
+            native_enum=False,
+            length=20,
+            values_callable=lambda obj: [e.value for e in obj],
+            validate_strings=True,
+        ),
+        default=Role.CAREGIVER,
+        nullable=False,
+    )
     deleted_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships

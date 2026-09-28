@@ -42,6 +42,15 @@ class TestUserCRUD(BaseTestCase):
         )
         self.assertEqual(user.password_hash, "$2b$12$precomputedhashvalue")
 
+    def test_create_user_with_invalid_role_raises_value_error(self):
+        with self.assertRaises(ValidationError):
+            UserCreate(
+                name="Invalid Role",
+                email="invalid@eldercare.test",
+                password="validpassword123",
+                role="invalid_role",
+            )
+
     def test_invalid_email_validation(self):
         with self.assertRaises(ValidationError):
             UserCreate(

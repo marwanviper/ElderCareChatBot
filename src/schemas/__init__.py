@@ -24,6 +24,7 @@ from src.schemas.resident import (
     ResidentUpdate,
 )
 from src.schemas.user import (
+    Role,
     UserBase,
     UserCreate,
     UserResponse,
@@ -41,6 +42,7 @@ __all__ = [
     "TokenPayload",
     "LoginRequest",
     # User
+    "Role",
     "UserBase",
     "UserCreate",
     "UserUpdate",

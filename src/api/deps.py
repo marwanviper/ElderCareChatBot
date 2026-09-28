@@ -12,7 +12,7 @@ from src.crud.user import get_user_by_id
 from src.crud.user_resident_permission import get_user_resident_permission
 from src.database import SessionLocal
 from src.models.resident import Resident
-from src.models.user import User
+from src.models.user import Role, User
 
 # OAuth2 scheme pointing to our login endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -56,7 +56,7 @@ def get_current_user(
     return user
 
 
-def require_role(*allowed_roles: str) -> Callable[[User], User]:
+def require_role(*allowed_roles: str | Role) -> Callable[[User], User]:
     """Dependency factory enforcing Role-Based Access Control (RBAC)."""
 
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
@@ -90,7 +90,7 @@ def verify_resident_access(
         )
 
     # Admins have global access to all residents
-    if current_user.role == "admin":
+    if current_user.role == Role.ADMIN:
         return resident
 
     # Caregivers must have explicit permission in user_resident_permissions

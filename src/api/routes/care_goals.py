@@ -16,7 +16,7 @@ from src.crud.care_goal import (
     update_care_goal,
 )
 from src.models.care_goal import CareGoal
-from src.models.user import User
+from src.models.user import User,Role
 from src.schemas.care_goal import (
     CareGoalCreate,
     CareGoalResponse,
@@ -129,7 +129,7 @@ def modify_goal(
 def remove_goal(
     goal_id: int,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_role("admin")),
+    _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> None:
     """Delete a care goal. Requires administrator role."""
     deleted = delete_care_goal(db, goal_id)
