@@ -12,6 +12,8 @@ from src.schemas.care_report import (
     CareReportUpdate,
 )
 from src.schemas.chat import (
+    ChatSessionCreateRequest,
+    ChatSessionUpdateRequest,
     ConversationBase,
     ConversationCreate,
     ConversationDetailResponse,
@@ -20,6 +22,11 @@ from src.schemas.chat import (
     MessageBase,
     MessageCreate,
     MessageResponse,
+    ProviderInfoResponse,
+    SafetyMetadataResponse,
+    SendMessageRequest,
+    SendMessageResponse,
+    TokenUsageResponse,
 )
 from src.schemas.incident import (
     IncidentBase,
@@ -90,4 +97,11 @@ __all__ = [
     "MessageBase",
     "MessageCreate",
     "MessageResponse",
+    "ProviderInfoResponse",
+    "ChatSessionCreateRequest",
+    "ChatSessionUpdateRequest",
+    "SendMessageRequest",
+    "SafetyMetadataResponse",
+    "TokenUsageResponse",
+    "SendMessageResponse",
 ]

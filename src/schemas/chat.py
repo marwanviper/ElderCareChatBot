@@ -132,3 +132,114 @@ class ConversationDetailResponse(ConversationResponse):
         description="Chronologically ordered list of messages in this session",
     )
 
+
+class ProviderInfoResponse(BaseModel):
+    """Schema describing an available LLM provider and its configuration state."""
+
+    provider: str = Field(..., description="Provider identifier ('gemini' or 'openai')")
+    default_model: str = Field(..., description="Default model for this provider")
+    available_models: list[str] = Field(
+        default_factory=list, description="Supported models for this provider"
+    )
+    is_configured: bool = Field(
+        ..., description="Whether the API key for this provider is configured on the server"
+    )
+
+
+class ChatSessionCreateRequest(BaseModel):
+    """Schema for creating a new conversational session via REST API."""
+
+    resident_id: int = Field(..., description="ID of the resident")
+    title: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Optional conversation title",
+    )
+    provider: str | None = Field(
+        default=None,
+        description="Optional LLM provider ('gemini' or 'openai')",
+        examples=["gemini"],
+    )
+    model: str | None = Field(
+        default=None,
+        description="Optional model identifier",
+        examples=["gemini-2.0-flash"],
+    )
+    extra_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional additional session metadata",
+    )
+
+
+class ChatSessionUpdateRequest(BaseModel):
+    """Schema for updating conversation title, status, or provider/model configuration."""
+
+    title: str | None = Field(default=None, max_length=200)
+    status: str | None = Field(
+        default=None,
+        max_length=30,
+        description="Status ('active', 'archived', 'closed')",
+    )
+    provider: str | None = Field(
+        default=None,
+        description="Updated LLM provider ('gemini' or 'openai')",
+    )
+    model: str | None = Field(
+        default=None,
+        description="Updated model identifier",
+    )
+    extra_metadata: dict[str, Any] | None = Field(default=None)
+
+
+class SendMessageRequest(BaseModel):
+    """Schema for sending a user message in a conversation."""
+
+    conversation_id: int = Field(..., description="Target conversation ID")
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="User message text",
+        examples=["How can I improve my daily sleep routine?"],
+    )
+    provider: str | None = Field(
+        default=None,
+        description="Optional provider override ('gemini' or 'openai')",
+    )
+    model: str | None = Field(
+        default=None,
+        description="Optional model override",
+    )
+
+
+class SafetyMetadataResponse(BaseModel):
+    """Safety screening results returned with a chat turn."""
+
+    risk_level: str = Field(default="none")
+    requires_caregiver_alert: bool = Field(default=False)
+    flagged_categories: list[str] = Field(default_factory=list)
+    matched_indicators: list[str] = Field(default_factory=list)
+
+
+class TokenUsageResponse(BaseModel):
+    """Token consumption metrics for a chat turn."""
+
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+
+
+class SendMessageResponse(BaseModel):
+    """Complete response returned after processing a conversational turn."""
+
+    conversation_id: int
+    resident_id: int
+    provider: str
+    model: str
+    user_message: MessageResponse
+    assistant_message: MessageResponse
+    safety: SafetyMetadataResponse
+    token_usage: TokenUsageResponse
+    latency_ms: float | None = None
+
+

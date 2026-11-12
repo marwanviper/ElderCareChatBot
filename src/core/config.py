@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     # API Prefix
     API_V1_PREFIX: str = "/api/v1"
 
+    # AI & LLM Provider Settings
+    DEFAULT_LLM_PROVIDER: str = "gemini"
+    GEMINI_API_KEY: str | None = None
+    GEMINI_DEFAULT_MODEL: str = "gemini-3.5-flash"
+    OPENAI_API_KEY: str | None = None
+    OPENAI_DEFAULT_MODEL: str = "gpt-3.5-turbo"
+    CHAT_MAX_HISTORY_MESSAGES: int = 20
+    CHAT_DEFAULT_TEMPERATURE: float = 0.3
+    CHAT_DEFAULT_MAX_TOKENS: int = 1024
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

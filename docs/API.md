@@ -152,9 +152,35 @@ Content-Type: application/json
 
 ---
 
-### 8. System Health (`/`)
+### 8. Conversational AI & LangGraph Chat (`/api/v1/chat`)
 
-* **Endpoint**: `GET /`
+| Method | Endpoint | Access | Summary | Request Body | Response Model |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/chat/providers` | Authenticated | List available LLM providers (`gemini`, `openai`), supported models, and API key status | None | `list[ProviderInfoResponse]` (200) |
+| `POST` | `/api/v1/chat/sessions` | Admin / Assigned CG | Create a new conversation session for a resident | `ChatSessionCreateRequest` | `ConversationResponse` (201) |
+| `GET` | `/api/v1/chat/sessions` | Authenticated | List accessible conversation sessions (`?resident_id=`, `?status=`) | None | `list[ConversationResponse]` (200) |
+| `GET` | `/api/v1/chat/sessions/{session_id}` | Admin / Assigned CG | Get conversation session metadata | None | `ConversationResponse` (200) |
+| `PATCH` | `/api/v1/chat/sessions/{session_id}` | Admin / Assigned CG | Update session title, status (`active`, `archived`, `closed`), or default LLM provider/model | `ChatSessionUpdateRequest` | `ConversationResponse` (200) |
+| `DELETE` | `/api/v1/chat/sessions/{session_id}` | Admin / Assigned CG | Delete conversation session and cascade-delete messages | None | `204 No Content` |
+| `GET` | `/api/v1/chat/sessions/{session_id}/history` | Admin / Assigned CG | Retrieve conversation with full chronological message history | None | `ConversationWithMessagesResponse` (200) |
+| `POST` | `/api/v1/chat/message` | Admin / Assigned CG | Execute LangGraph chat turn with Google Gemini or OpenAI GPT-3.5 | `SendMessageRequest` | `SendMessageResponse` (200) |
+
+#### Example: Send Message Request (`POST /api/v1/chat/message`)
+```json
+{
+  "conversation_id": 1,
+  "content": "Good morning! How can I encourage Anna with her daily walking goal?",
+  "provider": "gemini",
+  "model": "gemini-2.0-flash",
+  "temperature": 0.4
+}
+```
+
+---
+
+### 9. System Health (`/health`)
+
+* **Endpoint**: `GET /health`
 * **Access**: Public
 * **Response**:
 ```json
