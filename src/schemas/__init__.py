@@ -11,6 +11,16 @@ from src.schemas.care_report import (
     CareReportResponse,
     CareReportUpdate,
 )
+from src.schemas.chat import (
+    ConversationBase,
+    ConversationCreate,
+    ConversationDetailResponse,
+    ConversationResponse,
+    ConversationUpdate,
+    MessageBase,
+    MessageCreate,
+    MessageResponse,
+)
 from src.schemas.incident import (
     IncidentBase,
     IncidentCreate,
@@ -71,4 +81,13 @@ __all__ = [
     "UserResidentPermissionBase",
     "UserResidentPermissionCreate",
     "UserResidentPermissionResponse",
+    # Chat & Conversational AI
+    "ConversationBase",
+    "ConversationCreate",
+    "ConversationUpdate",
+    "ConversationResponse",
+    "ConversationDetailResponse",
+    "MessageBase",
+    "MessageCreate",
+    "MessageResponse",
 ]

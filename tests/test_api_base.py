@@ -12,7 +12,9 @@ from src.main import app
 from src.models import (
     CareGoal,
     CareReport,
+    Conversation,
     Incident,
+    Message,
     Resident,
     User,
     UserResidentPermission,

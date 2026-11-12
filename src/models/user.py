@@ -9,6 +9,7 @@ from src.database import Base
 
 if TYPE_CHECKING:
     from src.models.care_report import CareReport
+    from src.models.conversation import Conversation
     from src.models.user_resident_permission import UserResidentPermission
 
 
@@ -52,4 +53,7 @@ class User(Base):
     )
     user_resident_permissions: Mapped[List["UserResidentPermission"]] = relationship(
         "UserResidentPermission", back_populates="user"
+    )
+    conversations: Mapped[List["Conversation"]] = relationship(
+        "Conversation", back_populates="user"
     )

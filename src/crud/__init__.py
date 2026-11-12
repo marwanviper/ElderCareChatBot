@@ -6,6 +6,16 @@ from src.crud.care_goal import (
     get_care_goals_by_resident,
     update_care_goal,
 )
+from src.crud.chat import (
+    create_conversation,
+    create_message,
+    delete_conversation,
+    delete_message,
+    get_conversation_by_id,
+    get_conversations_by_resident,
+    get_messages_by_conversation,
+    update_conversation,
+)
 from src.crud.care_report import (
     create_care_report,
     delete_care_report,
@@ -90,4 +100,13 @@ __all__ = [
     "get_permissions_by_resident",
     "get_all_user_resident_permissions",
     "delete_user_resident_permission",
+    # Chat & Conversational AI
+    "create_conversation",
+    "get_conversation_by_id",
+    "get_conversations_by_resident",
+    "update_conversation",
+    "delete_conversation",
+    "create_message",
+    "get_messages_by_conversation",
+    "delete_message",
 ]
