@@ -30,12 +30,14 @@ class OpenAIProvider(BaseLLMProvider):
             raw_key.strip().strip('"').strip("'") if raw_key else None
         )
         self.default_model = (
-            default_model or settings.OPENAI_DEFAULT_MODEL or "gpt-3.5-turbo"
+            default_model or settings.OPENAI_DEFAULT_MODEL or "gpt-4o-mini"
         )
         base_models = [
+            "gpt-4o-mini",
+            "gpt-4o",
+            "gpt-4-turbo",
             "gpt-3.5-turbo",
             "gpt-3.5-turbo-0125",
-            "gpt-4o-mini",
         ]
         if self.default_model not in base_models:
             base_models.insert(0, self.default_model)
@@ -74,9 +76,24 @@ class OpenAIProvider(BaseLLMProvider):
             payload.append({"role": role, "content": msg.content})
         return payload
 
+    @staticmethod
+    def _is_transient_demand_error(exc: Exception) -> bool:
+        """Detect whether an exception is due to rate limits, quota limits, 429, or server overload."""
+        err_str = str(exc).lower()
+        exc_name = type(exc).__name__
+        return (
+            "ratelimiterror" in exc_name.lower()
+            or "429" in err_str
+            or "quota" in err_str
+            or "overloaded" in err_str
+            or "503" in err_str
+            or "temporarily" in err_str
+            or "rate limit" in err_str
+        )
+
     def generate(self, request: LLMGenerationRequest) -> LLMGenerationResponse:
         self.ensure_configured()
-        model_name = self.validate_model(request.model)
+        requested_model = self.validate_model(request.model)
         client = self._get_client()
 
         messages_payload = self._build_messages(
@@ -85,34 +102,61 @@ class OpenAIProvider(BaseLLMProvider):
         if len(messages_payload) <= 1:
             raise LLMProviderError("Cannot generate OpenAI response without user messages.")
 
-        start_time = time.perf_counter()
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages_payload,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-            )
-        except Exception as exc:
-            err_str = str(exc)
-            exc_name = type(exc).__name__
-            logger.error(
-                "OpenAI API error with model %s: %s - %s",
-                model_name,
-                exc_name,
-                err_str,
-            )
-            if "RateLimitError" in exc_name or "429" in err_str or "quota" in err_str.lower():
-                raise LLMRateLimitError(
-                    "OpenAI API rate limit or quota exceeded. Please try again shortly."
+        candidate_models = [requested_model] + [
+            m for m in self.available_models if m != requested_model
+        ]
+
+        last_transient_error: Exception | None = None
+        for current_model in candidate_models:
+            start_time = time.perf_counter()
+            try:
+                response = client.chat.completions.create(
+                    model=current_model,
+                    messages=messages_payload,
+                    temperature=request.temperature,
+                    max_tokens=request.max_tokens,
+                )
+                if current_model != requested_model:
+                    logger.info(
+                        "OpenAI failover successful: answered with model '%s' after primary '%s' encountered limit.",
+                        current_model,
+                        requested_model,
+                    )
+                model_name = current_model
+                break
+            except Exception as exc:
+                err_str = str(exc)
+                exc_name = type(exc).__name__
+                if "AuthenticationError" in exc_name or "invalid_api_key" in err_str.lower() or "401" in err_str:
+                    raise LLMConfigurationError(
+                        "Invalid OpenAI API key. Please verify OPENAI_API_KEY in .env."
+                    ) from exc
+
+                if self._is_transient_demand_error(exc):
+                    last_transient_error = exc
+                    logger.warning(
+                        "OpenAI model '%s' hit rate limit/quota (%s: %s). Automatically failing over to next model...",
+                        current_model,
+                        exc_name,
+                        err_str[:120],
+                    )
+                    continue
+
+                logger.error(
+                    "OpenAI API non-retryable error with model %s: %s - %s",
+                    current_model,
+                    exc_name,
+                    err_str,
+                )
+                raise LLMProviderError(
+                    f"OpenAI API request failed ({exc_name}): {err_str}"
                 ) from exc
-            if "AuthenticationError" in exc_name or "invalid_api_key" in err_str.lower() or "401" in err_str:
-                raise LLMConfigurationError(
-                    "Invalid OpenAI API key. Please verify OPENAI_API_KEY in .env."
-                ) from exc
-            raise LLMProviderError(
-                f"OpenAI API request failed ({exc_name}): {err_str}"
-            ) from exc
+        else:
+            logger.error("All candidate OpenAI models failed due to rate limits or quota.")
+            raise LLMRateLimitError(
+                f"OpenAI API rate limit or quota exceeded across all available models. "
+                f"Last error: {last_transient_error}"
+            ) from last_transient_error
 
         latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         choices = getattr(response, "choices", None)
@@ -146,35 +190,59 @@ class OpenAIProvider(BaseLLMProvider):
 
     def stream(self, request: LLMGenerationRequest) -> Iterator[str]:
         self.ensure_configured()
-        model_name = self.validate_model(request.model)
+        requested_model = self.validate_model(request.model)
         client = self._get_client()
 
         messages_payload = self._build_messages(
             request.system_prompt, request.messages
         )
-        try:
-            stream_resp = client.chat.completions.create(
-                model=model_name,
-                messages=messages_payload,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                stream=True,
-            )
-            for chunk in stream_resp:
-                choices = getattr(chunk, "choices", None)
-                if choices and len(choices) > 0:
-                    delta = getattr(choices[0], "delta", None)
-                    content = getattr(delta, "content", None) if delta else None
-                    if content:
-                        yield content
-        except Exception as exc:
-            err_str = str(exc)
-            exc_name = type(exc).__name__
-            if "RateLimitError" in exc_name or "429" in err_str:
-                raise LLMRateLimitError(
-                    "OpenAI streaming rate limit exceeded."
+
+        candidate_models = [requested_model] + [
+            m for m in self.available_models if m != requested_model
+        ]
+
+        last_transient_error: Exception | None = None
+        for current_model in candidate_models:
+            try:
+                stream_resp = client.chat.completions.create(
+                    model=current_model,
+                    messages=messages_payload,
+                    temperature=request.temperature,
+                    max_tokens=request.max_tokens,
+                    stream=True,
+                )
+                yielded_any = False
+                for chunk in stream_resp:
+                    choices = getattr(chunk, "choices", None)
+                    if choices and len(choices) > 0:
+                        delta = getattr(choices[0], "delta", None)
+                        content = getattr(delta, "content", None) if delta else None
+                        if content:
+                            yielded_any = True
+                            yield content
+                if yielded_any:
+                    return
+            except Exception as exc:
+                if self._is_transient_demand_error(exc):
+                    last_transient_error = exc
+                    logger.warning(
+                        "OpenAI stream with model '%s' hit limit (%s: %s). Failing over...",
+                        current_model,
+                        type(exc).__name__,
+                        str(exc)[:120],
+                    )
+                    continue
+                err_str = str(exc)
+                exc_name = type(exc).__name__
+                if "RateLimitError" in exc_name or "429" in err_str:
+                    raise LLMRateLimitError(
+                        "OpenAI streaming rate limit exceeded."
+                    ) from exc
+                raise LLMProviderError(
+                    f"OpenAI streaming failed: {exc_name}"
                 ) from exc
-            raise LLMProviderError(
-                f"OpenAI streaming failed: {exc_name}"
-            ) from exc
+        else:
+            raise LLMRateLimitError(
+                f"OpenAI streaming rate limit or quota exceeded across all models. Last error: {last_transient_error}"
+            ) from last_transient_error
 

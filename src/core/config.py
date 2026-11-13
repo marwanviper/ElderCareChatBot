@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     GEMINI_DEFAULT_MODEL: str = "gemini-3.5-flash"
     OPENAI_API_KEY: str | None = None
-    OPENAI_DEFAULT_MODEL: str = "gpt-3.5-turbo"
+    OPENAI_DEFAULT_MODEL: str = "gpt-4o-mini"
     CHAT_MAX_HISTORY_MESSAGES: int = 20
     CHAT_DEFAULT_TEMPERATURE: float = 0.3
     CHAT_DEFAULT_MAX_TOKENS: int = 1024

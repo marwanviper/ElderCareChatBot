@@ -34,7 +34,12 @@ class GeminiProvider(BaseLLMProvider):
         )
         base_models = [
             "gemini-3.5-flash",
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
             "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-pro",
             "gemini-1.5-flash",
             "gemini-1.5-pro",
         ]
@@ -76,9 +81,29 @@ class GeminiProvider(BaseLLMProvider):
             )
         return contents
 
+    @staticmethod
+    def _is_transient_demand_error(exc: Exception) -> bool:
+        """Detect whether an exception is due to high demand, rate limits, 503 unavailable, or temporary spikes."""
+        err_str = str(exc).lower()
+        err_upper = str(exc).upper()
+        exc_name = type(exc).__name__
+        return (
+            "503" in err_str
+            or "429" in err_str
+            or "unavailable" in err_str
+            or "high demand" in err_str
+            or "spikes in demand" in err_str
+            or "resource_exhausted" in err_upper
+            or "quota" in err_str
+            or "overloaded" in err_str
+            or "rate limit" in err_str
+            or "temporarily" in err_str
+            or "ServerError" in exc_name
+        )
+
     def generate(self, request: LLMGenerationRequest) -> LLMGenerationResponse:
         self.ensure_configured()
-        model_name = self.validate_model(request.model)
+        requested_model = self.validate_model(request.model)
         client = self._get_client()
 
         contents = self._build_contents(request.messages)
@@ -91,33 +116,63 @@ class GeminiProvider(BaseLLMProvider):
             "max_output_tokens": request.max_tokens,
         }
 
-        start_time = time.perf_counter()
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config_dict,
-            )
-        except Exception as exc:
-            err_str = str(exc)
-            logger.error(
-                "Gemini API error with model %s: %s - %s",
-                model_name,
-                type(exc).__name__,
-                err_str,
-            )
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str.upper() or "quota" in err_str.lower():
-                raise LLMRateLimitError(
-                    "Google Gemini API rate limit or quota exceeded. Please try again shortly."
+        # Build candidate failover model chain starting with the requested model
+        candidate_models = [requested_model] + [
+            m for m in self.available_models if m != requested_model
+        ]
+
+        last_transient_error: Exception | None = None
+        for current_model in candidate_models:
+            start_time = time.perf_counter()
+            try:
+                response = client.models.generate_content(
+                    model=current_model,
+                    contents=contents,
+                    config=config_dict,
+                )
+                if current_model != requested_model:
+                    logger.info(
+                        "Gemini failover successful: answered with model '%s' after primary '%s' encountered high demand.",
+                        current_model,
+                        requested_model,
+                    )
+                model_name = current_model
+                break
+            except Exception as exc:
+                err_str = str(exc)
+                if "API_KEY_INVALID" in err_str.upper() or "API KEY NOT VALID" in err_str.upper():
+                    raise LLMConfigurationError(
+                        "Invalid Google Gemini API key (API_KEY_INVALID). "
+                        "Google AI Studio keys start with 'AIza...' — please verify GEMINI_API_KEY in .env."
+                    ) from exc
+
+                if self._is_transient_demand_error(exc):
+                    last_transient_error = exc
+                    logger.warning(
+                        "Gemini model '%s' unavailable due to high demand/rate limit (%s: %s). "
+                        "Automatically failing over to alternative models...",
+                        current_model,
+                        type(exc).__name__,
+                        err_str[:120],
+                    )
+                    continue
+
+                logger.error(
+                    "Gemini API non-retryable error with model %s: %s - %s",
+                    current_model,
+                    type(exc).__name__,
+                    err_str,
+                )
+                raise LLMProviderError(
+                    f"Google Gemini API request failed ({type(exc).__name__}): {err_str}"
                 ) from exc
-            if "API_KEY_INVALID" in err_str.upper() or "API KEY NOT VALID" in err_str.upper():
-                raise LLMConfigurationError(
-                    "Invalid Google Gemini API key (API_KEY_INVALID). "
-                    "Google AI Studio keys start with 'AIza...' — please verify GEMINI_API_KEY in .env."
-                ) from exc
-            raise LLMProviderError(
-                f"Google Gemini API request failed ({type(exc).__name__}): {err_str}"
-            ) from exc
+        else:
+            # All candidate models failed due to transient demand/quota errors
+            logger.error("All candidate Gemini models failed due to high demand or quota limits.")
+            raise LLMRateLimitError(
+                f"Google Gemini API temporarily unavailable across all models due to high demand/quota limits. "
+                f"Last error: {last_transient_error}"
+            ) from last_transient_error
 
         latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         text_content = getattr(response, "text", None)
@@ -151,7 +206,7 @@ class GeminiProvider(BaseLLMProvider):
 
     def stream(self, request: LLMGenerationRequest) -> Iterator[str]:
         self.ensure_configured()
-        model_name = self.validate_model(request.model)
+        requested_model = self.validate_model(request.model)
         client = self._get_client()
 
         contents = self._build_contents(request.messages)
@@ -161,23 +216,46 @@ class GeminiProvider(BaseLLMProvider):
             "max_output_tokens": request.max_tokens,
         }
 
-        try:
-            response_stream = client.models.generate_content_stream(
-                model=model_name,
-                contents=contents,
-                config=config_dict,
-            )
-            for chunk in response_stream:
-                chunk_text = getattr(chunk, "text", None)
-                if chunk_text:
-                    yield chunk_text
-        except Exception as exc:
-            err_str = str(exc)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str.upper():
-                raise LLMRateLimitError(
-                    "Google Gemini streaming rate limit exceeded."
+        candidate_models = [requested_model] + [
+            m for m in self.available_models if m != requested_model
+        ]
+
+        last_transient_error: Exception | None = None
+        for current_model in candidate_models:
+            try:
+                response_stream = client.models.generate_content_stream(
+                    model=current_model,
+                    contents=contents,
+                    config=config_dict,
+                )
+                yielded_any = False
+                for chunk in response_stream:
+                    chunk_text = getattr(chunk, "text", None)
+                    if chunk_text:
+                        yielded_any = True
+                        yield chunk_text
+                if yielded_any:
+                    return
+            except Exception as exc:
+                if self._is_transient_demand_error(exc):
+                    last_transient_error = exc
+                    logger.warning(
+                        "Gemini stream with model '%s' unavailable (%s: %s). Failing over to next model...",
+                        current_model,
+                        type(exc).__name__,
+                        str(exc)[:120],
+                    )
+                    continue
+                err_str = str(exc)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str.upper():
+                    raise LLMRateLimitError(
+                        "Google Gemini streaming rate limit exceeded."
+                    ) from exc
+                raise LLMProviderError(
+                    f"Google Gemini streaming failed: {type(exc).__name__}"
                 ) from exc
-            raise LLMProviderError(
-                f"Google Gemini streaming failed: {type(exc).__name__}"
-            ) from exc
+        else:
+            raise LLMRateLimitError(
+                f"Google Gemini streaming temporarily unavailable across all models. Last error: {last_transient_error}"
+            ) from last_transient_error
 

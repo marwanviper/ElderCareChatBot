@@ -65,7 +65,8 @@ class TestAIProviders(unittest.TestCase):
             gemini.validate_model("gpt-4-nonexistent")
 
         openai_prov = OpenAIProvider(api_key="test-key")
-        self.assertEqual(openai_prov.validate_model(None), "gpt-3.5-turbo")
+        self.assertEqual(openai_prov.validate_model(None), "gpt-4o-mini")
+        self.assertEqual(openai_prov.validate_model("gpt-4o-mini"), "gpt-4o-mini")
         self.assertEqual(openai_prov.validate_model("gpt-3.5-turbo"), "gpt-3.5-turbo")
 
         with self.assertRaises(LLMModelNotSupportedError):
@@ -161,6 +162,32 @@ class TestAIProviders(unittest.TestCase):
             )
             with self.assertRaises(LLMRateLimitError):
                 openai_prov.generate(req)
+
+    def test_gemini_automatic_failover_on_high_demand(self):
+        """GeminiProvider should catch 503 high demand and failover to next model in available_models."""
+        gemini = GeminiProvider(api_key="fake-gemini-key")
+        mock_client = MagicMock()
+
+        def side_effect(model, contents, config):
+            if model == "gemini-3.8-flash":
+                raise Exception("503 UNAVAILABLE. This model is currently experiencing high demand.")
+            return SimpleNamespace(
+                text="Failover response from backup model",
+                usage_metadata=SimpleNamespace(
+                    prompt_token_count=10, candidates_token_count=5, total_token_count=15
+                ),
+            )
+
+        mock_client.models.generate_content.side_effect = side_effect
+        with patch.object(gemini, "_get_client", return_value=mock_client):
+            req = LLMGenerationRequest(
+                system_prompt="System",
+                messages=[ChatMessageInput(role="user", content="Hello")],
+                model="gemini-3.8-flash",
+            )
+            res = gemini.generate(req)
+            self.assertEqual(res.content, "Failover response from backup model")
+            self.assertNotEqual(res.model, "gemini-3.8-flash")
 
 
 if __name__ == "__main__":
