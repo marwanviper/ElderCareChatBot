@@ -1,5 +1,6 @@
 from src.models.care_goal import CareGoal
 from src.models.care_report import CareReport
+from src.models.clinical_embedding import ClinicalEmbedding
 from src.models.conversation import Conversation
 from src.models.incident import Incident
 from src.models.message import Message, MessageRole
@@ -18,4 +19,5 @@ __all__ = [
     "Conversation",
     "Message",
     "MessageRole",
+    "ClinicalEmbedding",
 ]

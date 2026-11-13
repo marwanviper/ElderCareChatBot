@@ -9,6 +9,7 @@ from src.database import Base
 if TYPE_CHECKING:
     from src.models.care_goal import CareGoal
     from src.models.care_report import CareReport
+    from src.models.clinical_embedding import ClinicalEmbedding
     from src.models.conversation import Conversation
     from src.models.incident import Incident
     from src.models.user_resident_permission import UserResidentPermission
@@ -39,6 +40,11 @@ class Resident(Base):
     )
     conversations: Mapped[List["Conversation"]] = relationship(
         "Conversation",
+        back_populates="resident",
+        cascade="all, delete-orphan",
+    )
+    clinical_embeddings: Mapped[List["ClinicalEmbedding"]] = relationship(
+        "ClinicalEmbedding",
         back_populates="resident",
         cascade="all, delete-orphan",
     )

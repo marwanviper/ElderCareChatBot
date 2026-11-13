@@ -29,13 +29,14 @@ The system combines a modern backend with AI capabilities to provide a foundatio
 | ---------------------- | -------------------------- |
 | 🐍 **Python**          | Core development language  |
 | ⚡ **FastAPI**         | Backend API                |
-| 🐘 **PostgreSQL**      | Database                   |
-| 🗃️ **SQLAlchemy**      | ORM & database interaction |
-| 📋 **Pydantic**        | Data validation & schemas  |
-| 🤖 **LLM**             | Conversational AI          |
-| 🧠 **Embeddings**      | Semantic representation    |
-| 🔎 **Vector Database** | AI-powered retrieval       |
-| 🌱 **Git**             | Version control            |
+| 🐘 **PostgreSQL & `pgvector`** | Relational Database & Integrated Vector Store |
+| 🗃️ **SQLAlchemy 2.0**   | ORM & database interaction |
+| 📋 **Pydantic v2**      | Data validation & schemas  |
+| 🦜 **LangGraph**        | Conversational agent orchestration |
+| 🤖 **LLMs**             | Google Gemini & OpenAI GPT-3.5 |
+| 🧠 **Embeddings**       | Clinical semantic representations |
+| 🖥️ **Streamlit**        | Frontend Caregiver & Admin Portal |
+| 🌱 **Git**              | Version control            |
 
 ---
 
@@ -87,19 +88,23 @@ This separation keeps the system maintainable and allows individual components t
 
 ---
 
-## 🗄️ Database
+## 🗄️ Database & Vector Search (`pgvector`)
 
-PostgreSQL is used as the primary relational database.
+PostgreSQL serves as both the relational database and the native vector database via the **`pgvector`** extension.
 
-SQLAlchemy provides the ORM layer responsible for:
+### Why Integrated `pgvector` over External Vector Databases?
 
-- Database models
-- Relationships
-- Sessions
-- Queries
-- CRUD operations
+Rather than introducing a disparate, external vector database (such as Pinecone, ChromaDB, or Qdrant), ElderCareChatBot unifies relational care records and high-dimensional embeddings within PostgreSQL for several architectural reasons:
 
-The database layer is designed to support both the care-management system and the AI components that depend on structured user information.
+1. **Robustness & Strict Transactional Integrity (ACID):**
+   - Clinical observations (`care_reports`), rehabilitation targets (`care_goals`), and adverse incidents (`incidents`) are vectorized and stored alongside their relational source rows.
+   - When a caregiver edits a note or an administrator removes a resident record, corresponding embeddings are atomically updated or cascade-deleted (`ON DELETE CASCADE`) within the same database transaction, eliminating data corruption, state drift, and "orphan vectors".
+2. **Native Role-Based Access Control (RBAC) in Vector Search:**
+   - In healthcare settings, data isolation is non-negotiable. Caregivers may only access data for explicitly assigned residents (`user_resident_permissions`).
+   - Using `pgvector`, vector similarity queries join directly against existing relational access control tables in a single atomic SQL statement, preventing data leakage without needing to duplicate access control lists across two separate systems.
+3. **Operational Simplicity & Zero Extra Infrastructure Overhead:**
+   - Single point of backup, recovery, and point-in-time restore (PITR).
+   - Reuses existing connection pools (`psycopg`), Alembic migration versioning, and secure VPC boundaries without exposing protected health information to external SaaS APIs.
 
 ---
 
@@ -154,14 +159,13 @@ The AI layer will eventually support conversational context, semantic retrieval,
 - [ ] Notifications & alerts
 
 ### AI & Chatbot
-- [ ] Chatbot integration
-- [ ] Conversation history
-- [ ] Context management
-- [ ] Long-term memory
-- [ ] Embedding pipeline
-- [ ] Vector database
-- [ ] RAG pipeline
-- [ ] Personalized responses
+- [x] Multi-provider LLM integration (Google Gemini & OpenAI GPT-3.5)
+- [x] LangGraph conversational workflow & state management
+- [x] Conversation session persistence & message history
+- [x] Clinical safety screening & emergency escalation alerts
+- [x] Streamlit Caregiver & Admin Frontend Portal
+- [ ] `pgvector` clinical embeddings & RAG pipeline (In Progress)
+- [ ] Long-term conversation summarization
 
 ---
 
@@ -169,6 +173,8 @@ The AI layer will eventually support conversational context, semantic retrieval,
 
 Detailed documentation is available in the [`docs/`](docs/README.md) directory:
 - [API Reference](docs/API.md)
+- [LLM Architecture & LangGraph Workflow](docs/LLM_ARCHITECTURE.md)
+- [Streamlit Frontend Guide](docs/FRONTEND_GUIDE.md)
 - [Authentication Guide](docs/AUTHENTICATION.md)
 - [Authorization & RBAC](docs/AUTHORIZATION.md)
 - [Logging & Error Handling](docs/LOGGING.md)

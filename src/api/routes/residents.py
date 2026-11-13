@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from src.ai.services.rag_service import RAGService
 from src.api.deps import (
     get_current_user,
     get_db,
@@ -88,6 +89,7 @@ def create_new_resident(
 ) -> Resident:
     """Create a new resident record. Requires administrator role."""
     resident = create_resident(db, resident_data=resident_data)
+    RAGService.safe_index_resident(db, resident)
     logger.info("New resident admitted with ID %s", resident.id)
     return resident
 
@@ -112,6 +114,7 @@ def modify_resident(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Resident with ID {resident_id} not found",
         )
+    RAGService.safe_index_resident(db, updated)
     logger.info("Resident %s updated", resident_id)
     return updated
 

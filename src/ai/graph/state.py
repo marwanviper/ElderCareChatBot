@@ -28,6 +28,9 @@ class ChatGraphState(TypedDict, total=False):
     # Safety & Validation Metadata
     safety_metadata: dict[str, Any]
 
+    # Clinical Vector Retrieval (RAG)
+    retrieved_context: list[str]
+
     # LLM Execution Outputs
     llm_response: str | None
     token_usage: dict[str, int | None]

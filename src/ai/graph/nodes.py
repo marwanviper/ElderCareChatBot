@@ -8,6 +8,7 @@ from src.ai.prompts.elderly_care import build_elderly_care_system_prompt
 from src.ai.providers.base import ChatMessageInput, LLMGenerationRequest
 from src.ai.providers.factory import LLMProviderFactory
 from src.ai.safety.checker import SafetyChecker
+from src.ai.services.rag_service import RAGService
 from src.core.config import settings
 from src.core.logging import logger
 from src.crud.chat import (
@@ -133,15 +134,50 @@ def validate_input_node(state: ChatGraphState) -> dict[str, Any]:
     }
 
 
+def retrieve_clinical_rag_node(
+    state: ChatGraphState, config: RunnableConfig
+) -> dict[str, Any]:
+    """Node 3a: Retrieve relevant clinical records for the resident based on vector similarity."""
+    db = _get_db_from_config(config)
+    resident_id = state.get("resident_id")
+    user_message = state.get("current_message", "")
+
+    if not resident_id or not user_message:
+        return {
+            "retrieved_context": [],
+            "execution_status": "context_retrieved",
+        }
+
+    try:
+        context_chunks = RAGService.search_relevant_context(
+            db=db,
+            resident_id=resident_id,
+            query_text=user_message,
+            top_k=4,
+            threshold=0.25,
+            provider_name=state.get("selected_provider"),
+        )
+    except Exception as exc:
+        logger.warning("RAG retrieval skipped due to non-fatal error: %s", exc)
+        context_chunks = []
+
+    return {
+        "retrieved_context": context_chunks,
+        "execution_status": "context_retrieved",
+    }
+
+
 def safety_check_node(state: ChatGraphState) -> dict[str, Any]:
     """Node 4: Screen user message for clinical or emergency safety concerns and build prompt."""
     user_message = state["current_message"]
     safety_result = SafetyChecker.evaluate(user_message)
+    retrieved_context = state.get("retrieved_context", [])
 
     system_prompt = build_elderly_care_system_prompt(
         resident_name=state.get("resident_name"),
         room_number=state.get("resident_room"),
         safety_directive=safety_result.safety_directive,
+        clinical_context=retrieved_context,
     )
 
     if safety_result.requires_caregiver_alert:

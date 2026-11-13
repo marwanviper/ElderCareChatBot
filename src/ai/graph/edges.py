@@ -15,11 +15,11 @@ def route_after_load_conversation(
 
 def route_after_validate_input(
     state: ChatGraphState,
-) -> Literal["safety_check", "__end__"]:
-    """Route to safety screening if input is valid, otherwise terminate."""
+) -> Literal["retrieve_clinical_rag", "__end__"]:
+    """Route to clinical RAG retrieval if input is valid, otherwise terminate."""
     if state.get("execution_status") == "failed":
         return END
-    return "safety_check"
+    return "retrieve_clinical_rag"
 
 
 def route_after_select_provider(

@@ -1,6 +1,7 @@
 .env
 docs/CHAT_SYSTEM_IMPLEMENTATION_PLAN.md
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.db

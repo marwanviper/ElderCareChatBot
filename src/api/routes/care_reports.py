@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from src.ai.services.rag_service import RAGService
 from src.api.deps import (
     get_current_user,
     get_db,
@@ -51,6 +52,7 @@ def create_report(
         report_data.created_by = current_user.id
 
     report = create_care_report(db, report_data=report_data)
+    RAGService.safe_index_care_report(db, report)
     logger.info(
         "Care report %s authored by user %s for resident %s",
         report.id,
@@ -165,6 +167,8 @@ def modify_report(
     updated = update_care_report(
         db, report_id=report_id, report_data=report_data
     )
+    if updated:
+        RAGService.safe_index_care_report(db, updated)
     logger.info("Care report %s updated by user %s", report_id, current_user.id)
     return updated
 
@@ -197,5 +201,7 @@ def remove_report(
             detail="You are not authorized to delete reports authored by someone else",
         )
 
+    resident_id = report.resident_id
     delete_care_report(db, report_id)
+    RAGService.safe_delete_by_source(db, resident_id=resident_id, source_type="care_report", source_id=report_id)
     logger.info("Care report %s deleted by user %s", report_id, current_user.id)

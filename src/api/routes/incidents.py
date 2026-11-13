@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from src.ai.services.rag_service import RAGService
 from src.api.deps import (
     get_current_user,
     get_db,
@@ -44,6 +45,7 @@ def report_incident(
         db=db,
     )
     incident = create_incident(db, incident_data=incident_data)
+    RAGService.safe_index_incident(db, incident)
     logger.warning(
         "Incident %s (%s) logged for resident %s by user %s",
         incident.id,
@@ -122,6 +124,8 @@ def modify_incident(
     updated = update_incident(
         db, incident_id=incident_id, incident_data=incident_data
     )
+    if updated:
+        RAGService.safe_index_incident(db, updated)
     logger.info("Incident %s updated", incident_id)
     return updated
 
@@ -137,10 +141,18 @@ def remove_incident(
     _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> None:
     """Delete an incident record. Requires administrator role."""
+    incident = get_incident_by_id(db, incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident with ID {incident_id} not found",
+        )
+    resident_id = incident.resident_id
     deleted = delete_incident(db, incident_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Incident with ID {incident_id} not found",
         )
+    RAGService.safe_delete_by_source(db, resident_id=resident_id, source_type="incident", source_id=incident_id)
     logger.info("Incident %s deleted by admin", incident_id)

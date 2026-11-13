@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from src.ai.services.rag_service import RAGService
 from src.api.deps import (
     get_current_user,
     get_db,
@@ -42,6 +43,7 @@ def create_goal(
         resident_id=goal_data.resident_id, current_user=current_user, db=db
     )
     goal = create_care_goal(db, goal_data=goal_data)
+    RAGService.safe_index_care_goal(db, goal)
     logger.info("Care goal %s created for resident %s", goal.id, goal.resident_id)
     return goal
 
@@ -117,6 +119,8 @@ def modify_goal(
         resident_id=goal.resident_id, current_user=current_user, db=db
     )
     updated = update_care_goal(db, goal_id=goal_id, goal_data=goal_data)
+    if updated:
+        RAGService.safe_index_care_goal(db, updated)
     logger.info("Care goal %s updated", goal_id)
     return updated
 
@@ -132,10 +136,18 @@ def remove_goal(
     _admin: User = Depends(require_role(Role.ADMIN)),
 ) -> None:
     """Delete a care goal. Requires administrator role."""
+    goal = get_care_goal_by_id(db, goal_id)
+    if not goal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Care goal with ID {goal_id} not found",
+        )
+    resident_id = goal.resident_id
     deleted = delete_care_goal(db, goal_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Care goal with ID {goal_id} not found",
         )
+    RAGService.safe_delete_by_source(db, resident_id=resident_id, source_type="care_goal", source_id=goal_id)
     logger.info("Care goal %s deleted by admin", goal_id)

@@ -18,8 +18,9 @@ def build_elderly_care_system_prompt(
     resident_name: str | None = None,
     room_number: str | None = None,
     safety_directive: str | None = None,
+    clinical_context: list[str] | None = None,
 ) -> str:
-    """Assemble the complete system prompt with resident context and any safety directives."""
+    """Assemble the complete system prompt with resident context, safety directives, and retrieved clinical records."""
     sections = [ELDERLY_CARE_SYSTEM_PROMPT.strip()]
 
     if resident_name:
@@ -28,6 +29,16 @@ def build_elderly_care_system_prompt(
             context_line += f" (Room: {room_number})"
         context_line += "."
         sections.append(context_line)
+
+    if clinical_context:
+        records_block = "\n".join(f"- {c.strip()}" for c in clinical_context if c.strip())
+        if records_block:
+            sections.append(
+                f"RELEVANT CLINICAL RECORDS & RESIDENT HISTORY:\n"
+                f"The following verified observations, goals, or incidents are recorded in the resident's care chart:\n"
+                f"{records_block}\n"
+                f"Use this factual context to provide accurate, personalized assistance. Do not contradict these records."
+            )
 
     if safety_directive and safety_directive.strip():
         sections.append(

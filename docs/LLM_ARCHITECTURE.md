@@ -23,14 +23,15 @@ flowchart TD
     N1 -->|ok| N2["2. load_conversation_history"]
     N1 -->|error| END_ERR(["__end__ (Abort)"])
     N2 --> N3["3. validate_input"]
-    N3 -->|ok| N4["4. safety_check"]
+    N3 -->|ok| N4["4. retrieve_clinical_rag"]
     N3 -->|error| END_ERR
-    N4 --> N5["5. select_llm_provider (Gemini / OpenAI)"]
-    N5 -->|ok| N6["6. generate_response"]
-    N5 -->|error| END_ERR
-    N6 -->|ok| N7["7. persist_assistant_message"]
+    N4 --> N5["5. safety_check"]
+    N5 --> N6["6. select_llm_provider (Gemini / OpenAI)"]
+    N6 -->|ok| N7["7. generate_response"]
     N6 -->|error| END_ERR
-    N7 --> END_OK(["__end__"])
+    N7 -->|ok| N8["8. persist_assistant_message"]
+    N7 -->|error| END_ERR
+    N8 --> END_OK(["__end__"])
 ```
 
 ### Node Responsibilities (`src/ai/graph/nodes.py`)
@@ -40,10 +41,11 @@ flowchart TD
 | `1. load_conversation` | Loads `Conversation` and `Resident` from DB, verifies `status == "active"`, and resolves default `provider` and `model`. |
 | `2. load_conversation_history` | Loads the sliding window of recent messages (`CHAT_MAX_HISTORY_MESSAGES`, default 20) ordered chronologically. |
 | `3. validate_input` | Trims and validates `user_input` length and non-empty constraints. |
-| `4. safety_check` | Screens `user_input` via `SafetyChecker` (`src/ai/safety/checker.py`) for high-emergency indicators (falls, chest pain, stroke, self-harm) and medium clinical concerns (sleep, medication, dizziness). Injects a `safety_directive` into the state when triggered. |
-| `5. select_llm_provider` | Uses `LLMProviderFactory` to instantiate `GeminiProvider` or `OpenAIProvider`, verifies API key availability, and validates the requested model name. |
-| `6. generate_response` | Builds the Elderly Care Companion system prompt (`build_elderly_care_system_prompt`), attaches resident context and safety directives, and calls `provider.generate()`. |
-| `7. persist_assistant_message` | Atomically writes the user `Message` and assistant `Message` to PostgreSQL/SQLite, storing `provider`, `model`, `token_usage`, `latency_ms`, and `safety` metadata in `Message.extra_metadata` and updating `Conversation.extra_metadata`. |
+| `4. retrieve_clinical_rag` | Generates a 768-dim query embedding using Gemini/OpenAI embedding models, performs cosine similarity search over `clinical_embeddings` strictly filtered to the current resident (`resident_id`), and attaches relevant clinical notes to `state.retrieved_context`. |
+| `5. safety_check` | Screens `user_input` via `SafetyChecker` (`src/ai/safety/checker.py`) for high-emergency indicators (falls, chest pain, stroke, self-harm) and medium clinical concerns (sleep, medication, dizziness). Injects a `safety_directive` into the state when triggered. |
+| `6. select_llm_provider` | Uses `LLMProviderFactory` to instantiate `GeminiProvider` or `OpenAIProvider`, verifies API key availability, and validates the requested model name. |
+| `7. generate_response` | Builds the Elderly Care Companion system prompt (`build_elderly_care_system_prompt`), attaches resident context, retrieved clinical facts, and safety directives, and calls `provider.generate()`. |
+| `8. persist_assistant_message` | Atomically writes the user `Message` and assistant `Message` to PostgreSQL/SQLite, storing `provider`, `model`, `token_usage`, `latency_ms`, and `safety` metadata in `Message.extra_metadata` and updating `Conversation.extra_metadata`. |
 
 ---
 

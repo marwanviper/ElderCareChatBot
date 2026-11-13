@@ -11,6 +11,7 @@ from src.ai.graph.nodes import (
     load_conversation_history_node,
     load_conversation_node,
     persist_assistant_message_node,
+    retrieve_clinical_rag_node,
     safety_check_node,
     select_llm_provider_node,
     validate_input_node,
@@ -28,6 +29,7 @@ def build_chat_workflow():
         "load_conversation_history", load_conversation_history_node
     )
     builder.add_node("validate_input", validate_input_node)
+    builder.add_node("retrieve_clinical_rag", retrieve_clinical_rag_node)
     builder.add_node("safety_check", safety_check_node)
     builder.add_node("select_llm_provider", select_llm_provider_node)
     builder.add_node("generate_response", generate_response_node)
@@ -50,10 +52,11 @@ def build_chat_workflow():
         "validate_input",
         route_after_validate_input,
         {
-            "safety_check": "safety_check",
+            "retrieve_clinical_rag": "retrieve_clinical_rag",
             END: END,
         },
     )
+    builder.add_edge("retrieve_clinical_rag", "safety_check")
     builder.add_edge("safety_check", "select_llm_provider")
     builder.add_conditional_edges(
         "select_llm_provider",
