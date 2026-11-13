@@ -15,11 +15,11 @@ def route_after_load_conversation(
 
 def route_after_validate_input(
     state: ChatGraphState,
-) -> Literal["retrieve_clinical_rag", "__end__"]:
-    """Route to clinical RAG retrieval if input is valid, otherwise terminate."""
+) -> Literal["safety_check", "__end__"]:
+    """Route to safety screening if input is valid, otherwise terminate."""
     if state.get("execution_status") == "failed":
         return END
-    return "retrieve_clinical_rag"
+    return "safety_check"
 
 
 def route_after_select_provider(
@@ -33,9 +33,13 @@ def route_after_select_provider(
 
 def route_after_generate_response(
     state: ChatGraphState,
-) -> Literal["persist_assistant_message", "__end__"]:
-    """Route to database persistence only if LLM generation succeeded."""
+) -> Literal["execute_clinical_tool", "persist_assistant_message", "__end__"]:
+    """ReAct router: Dispatch to clinical tool if factual data is needed, else persist response."""
     if state.get("execution_status") == "failed":
         return END
+
+    if state.get("requires_clinical_data"):
+        return "execute_clinical_tool"
+
     return "persist_assistant_message"
 

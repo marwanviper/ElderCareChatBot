@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from src.ai.graph.workflow import reset_workflow_checkpointer
 from src.database import Base
 # Ensure all models are imported so their tables exist in metadata
 from src.models import (
@@ -21,6 +22,7 @@ class BaseTestCase(unittest.TestCase):
     """Base test case initializing an in-memory SQLite database for test isolation."""
 
     def setUp(self):
+        reset_workflow_checkpointer()
         self.engine = create_engine(
             "sqlite:///:memory:",
             connect_args={"check_same_thread": False},
@@ -36,3 +38,4 @@ class BaseTestCase(unittest.TestCase):
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
         self.engine.dispose()
+        reset_workflow_checkpointer()

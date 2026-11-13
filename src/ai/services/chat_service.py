@@ -28,7 +28,12 @@ class ChatService:
 
         result_state: ChatGraphState = chat_workflow.invoke(
             initial_state,
-            config={"configurable": {"db": db}},
+            config={
+                "configurable": {
+                    "db": db,
+                    "thread_id": str(conversation_id),
+                }
+            },
         )
         return result_state
 

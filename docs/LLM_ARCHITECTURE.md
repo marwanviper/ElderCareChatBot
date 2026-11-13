@@ -19,33 +19,37 @@ This document details the modular Conversational AI & LangGraph orchestration la
 
 ```mermaid
 flowchart TD
-    START(["__start__"]) --> N1["1. load_conversation"]
-    N1 -->|ok| N2["2. load_conversation_history"]
+    START(["__start__"]) --> N1["1. load_conversation (Fast-Path Cached)"]
+    N1 -->|ok| N2["2. load_conversation_history (Fast-Path Cached)"]
     N1 -->|error| END_ERR(["__end__ (Abort)"])
     N2 --> N3["3. validate_input"]
-    N3 -->|ok| N4["4. retrieve_clinical_rag"]
+    N3 -->|ok| N4["4. safety_check"]
     N3 -->|error| END_ERR
-    N4 --> N5["5. safety_check"]
-    N5 --> N6["6. select_llm_provider (Gemini / OpenAI)"]
-    N6 -->|ok| N7["7. generate_response"]
+    N4 --> N5["5. select_llm_provider (Gemini / OpenAI)"]
+    N5 -->|ok| N6["6. generate_response (ReAct Agent Reasoning Node)"]
+    N5 -->|error| END_ERR
+    
+    %% ReAct Dynamic Tool Loop
+    N6 -->|needs clinical data| T1["6a. execute_clinical_tool (pgvector / RAG)"]
+    T1 -->|enrich prompt & context| N6
+    
+    N6 -->|response generated| N7["7. persist_assistant_message"]
     N6 -->|error| END_ERR
-    N7 -->|ok| N8["8. persist_assistant_message"]
-    N7 -->|error| END_ERR
-    N8 --> END_OK(["__end__"])
+    N7 --> END_OK(["__end__"])
 ```
 
 ### Node Responsibilities (`src/ai/graph/nodes.py`)
 
 | Node | Responsibility |
 |---|---|
-| `1. load_conversation` | Loads `Conversation` and `Resident` from DB, verifies `status == "active"`, and resolves default `provider` and `model`. |
-| `2. load_conversation_history` | Loads the sliding window of recent messages (`CHAT_MAX_HISTORY_MESSAGES`, default 20) ordered chronologically. |
+| `1. load_conversation` | Fast-path cached. Loads `Conversation` and `Resident` on first turn; reuses session state snapshot on subsequent turns without re-querying the database. |
+| `2. load_conversation_history` | Fast-path cached. Maintains sliding message window in state; bypasses repeated database table queries on ongoing conversations. |
 | `3. validate_input` | Trims and validates `user_input` length and non-empty constraints. |
-| `4. retrieve_clinical_rag` | Generates a 768-dim query embedding using Gemini/OpenAI embedding models, performs cosine similarity search over `clinical_embeddings` strictly filtered to the current resident (`resident_id`), and attaches relevant clinical notes to `state.retrieved_context`. |
-| `5. safety_check` | Screens `user_input` via `SafetyChecker` (`src/ai/safety/checker.py`) for high-emergency indicators (falls, chest pain, stroke, self-harm) and medium clinical concerns (sleep, medication, dizziness). Injects a `safety_directive` into the state when triggered. |
-| `6. select_llm_provider` | Uses `LLMProviderFactory` to instantiate `GeminiProvider` or `OpenAIProvider`, verifies API key availability, and validates the requested model name. |
-| `7. generate_response` | Builds the Elderly Care Companion system prompt (`build_elderly_care_system_prompt`), attaches resident context, retrieved clinical facts, and safety directives, and calls `provider.generate()`. |
-| `8. persist_assistant_message` | Atomically writes the user `Message` and assistant `Message` to PostgreSQL/SQLite, storing `provider`, `model`, `token_usage`, `latency_ms`, and `safety` metadata in `Message.extra_metadata` and updating `Conversation.extra_metadata`. |
+| `4. safety_check` | Screens `user_input` via `SafetyChecker` for high-emergency indicators (falls, chest pain, stroke, self-harm) and medium clinical concerns. Injects `safety_directive` into prompt. |
+| `5. select_llm_provider` | Resolves requested or defaulted LLM provider (`gemini` / `openai`) and validates model identifier. |
+| `6. generate_response` | **ReAct Agent Reasoning Node.** Reasons over the user query. If factual resident records are needed, it dynamically requests the clinical tool (`requires_clinical_data=True`). Once records are loaded (or if not needed), generates the final grounded reply. |
+| `6a. execute_clinical_tool` | **Clinical RAG Tool Node.** Executes resident-scoped vector similarity search via `RAGService`, updates `retrieved_context`, injects facts into `system_prompt`, and loops directly back to `generate_response`. |
+| `7. persist_assistant_message` | Atomically writes the user `Message` and assistant `Message` to PostgreSQL/SQLite, updates in-memory history, and stores metadata. |
 
 ---
 
